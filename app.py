@@ -49,7 +49,6 @@ if st.button("Investigar", type="primary"):
                 exclude_domains=DOMINIOS_EXCLUIDOS
             )
             
-            # Unimos y eliminamos enlaces duplicados
             urls_vistas = set()
             fuentes_limpias = []
             for r in res_empresa['results'] + res_vocera['results']:
@@ -64,14 +63,14 @@ if st.button("Investigar", type="primary"):
             Eres un analista senior de inteligencia corporativa y relaciones públicas especializado en {EMPRESA} y {VOCERA}.
             Tu tarea es redactar un reporte EXHAUSTIVO, DETALLADO y 100% VERÍDICO basado ÚNICAMENTE en las fuentes externas proporcionadas abajo.
 
-            REGLAS ESTRICTAS DE PRECISIÓN:
+            REGLAS ESTRICTAS DE REDACCIÓN Y CITADO:
             1. CERO INVENCIONES: Si una fecha, cifra o declaración no aparece explícitamente en los textos de abajo, NO la incluyas ni la supongas.
-            2. DETALLE AMPLIO: No hagas resúmenes de dos líneas. Desarrolla cada hallazgo explicando el contexto, qué medio lo publicó, qué tema energético o corporativo se trató y cuál fue el aporte de {EMPRESA} o {VOCERA}.
-            3. ESTRUCTURA DEL REPORTE:
-               - **Panorama General:** Resumen de los hallazgos encontrados en medios externos.
-               - **Menciones y Noticias sobre {EMPRESA}:** Desglose detallado por cada fuente externa relevante.
-               - **Actividad Pública y Declaraciones de {VOCERA}:** Entrevistas, columnas, paneles o citas encontradas.
-               - **Fuentes Consultadas:** Lista con enlaces Markdown clickeables ([Nombre del artículo o medio](URL)).
+            2. ENLACES INCRUSTADOS EN EL TEXTO (MUY IMPORTANTE): NO crees una sección de "Fuentes Consultadas" al final. En su lugar, incrusta cada enlace Markdown clickeable directamente dentro de la oración o viñeta donde mencionas ese dato o noticia. Ejemplo correcto: "De acuerdo con [El Economista](URL), la empresa señaló..." o "En una entrevista para [Energía a Debate](URL), {VOCERA} explicó...".
+            3. DETALLE AMPLIO: Desarrolla cada hallazgo explicando el contexto, qué tema energético o corporativo se trató y cuál fue el aporte de {EMPRESA} o {VOCERA}.
+            4. ESTRUCTURA DEL REPORTE:
+               - **Panorama General:** Resumen ejecutivo de los hallazgos encontrados en medios externos.
+               - **Menciones y Noticias sobre {EMPRESA}:** Desglose detallado con cada enlace incrustado en su párrafo correspondiente.
+               - **Actividad Pública y Declaraciones de {VOCERA}:** Entrevistas, columnas, paneles o citas encontradas con cada enlace incrustado en su punto correspondiente.
 
             FUENTES EXTERNAS RECOPILADAS:
             {contexto_web}
