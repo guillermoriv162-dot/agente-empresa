@@ -6,10 +6,8 @@ from tavily import TavilyClient
 client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 tavily = TavilyClient(api_key=os.environ["TAVILY_API_KEY"])
 
-# --- EDITA ESTOS DOS DATOS CON LA INFORMACIÓN REAL ---
 EMPRESA = "Acclaim Energy"
 VOCERA = "María José Treviño"
-# ----------------------------------------------------
 
 st.set_page_config(page_title=f"Agente: {EMPRESA}", page_icon="🔎")
 st.title(f"🔎 Agente de Monitoreo: {EMPRESA}")
@@ -39,7 +37,7 @@ if st.button("Investigar", type="primary"):
             """
             
             respuesta = client.models.generate_content(
-                model="gemini-flash-latest",
+                model="gemini-2.5-flash",
                 contents=prompt
             )
             st.markdown(respuesta.text)
