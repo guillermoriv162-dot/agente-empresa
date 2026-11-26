@@ -6,7 +6,7 @@ from tavily import TavilyClient
 
 @st.cache_resource
 def iniciar_clientes():
-    g_client = genai.Client(api_key=os.environ["GEMINI_API_KEY"], http_options={'timeout': 30000})
+    g_client = genai.Client(api_key=os.environ["GEMINI_API_KEY"], http_options={'timeout': 25000})
     t_client = TavilyClient(api_key=os.environ["TAVILY_API_KEY"])
     return g_client, t_client
 
@@ -22,11 +22,11 @@ DOMINIOS_EXCLUIDOS = [
     "://acclaimenergy.com.mx"
 ]
 
-st.set_page_config(page_title=f"Agente: {EMPRESA}", page_icon="🛡️", layout="wide")
-st.title(f"🛡️ Inteligencia Corporativa Verificada: {EMPRESA}")
-st.write(f"Monitoreo estricto en medios externos sobre **{EMPRESA}** y **{VOCERA}** (cero relleno, 100% verificado).")
+st.set_page_config(page_title="Acclaim Energy IA Agent", layout="wide")
+st.title("Acclaim Energy IA Agent")
+st.write(f"Monitoreo en medios externos sobre **{EMPRESA}** y **{VOCERA}**.")
 
-# Guarda historial de correcciones en la sesión para que aprenda de tus observaciones
+# Memoria persistente en la sesión para reglas aprendidas
 if "reglas_aprendidas" not in st.session_state:
     st.session_state.reglas_aprendidas = []
 
@@ -40,7 +40,7 @@ def llamar_gemini(prompt_texto):
             resp = client.models.generate_content(
                 model=modelo,
                 contents=prompt_texto,
-                config=types.GenerateContentConfig(temperature=0.0) # 0.0 elimina creatividad y relleno
+                config=types.GenerateContentConfig(temperature=0.2)
             )
             return resp.text
         except Exception as err:
@@ -48,91 +48,105 @@ def llamar_gemini(prompt_texto):
             continue
     raise ultimo_error
 
+def optimizar_busqueda_con_aprendizaje(consulta_base, reglas):
+    if not reglas:
+        return consulta_base
+    # Traduce las correcciones del usuario en filtros reales para el motor de búsqueda
+    prompt_query = f"""
+    Convierte esta búsqueda y las reglas del usuario en una consulta corta para buscador web (máximo 15 palabras, sin comillas innecesarias, usando -palabra si el usuario pidió excluir algún sitio o tema).
+    Búsqueda base: {consulta_base}
+    Reglas aprendidas: {"; ".join(reglas)}
+    Devuelve ÚNICAMENTE la consulta final.
+    """
+    try:
+        return llamar_gemini(prompt_query).strip()
+    except Exception:
+        return consulta_base
+
 if st.button("Investigar", type="primary"):
     if not pregunta.strip():
         st.warning("Por favor escribe una consulta primero.")
     else:
-        estado = st.status("Ejecutando investigación verificada...", expanded=True)
+        estado = st.status("Iniciando investigación en medios externos...", expanded=True)
         try:
-            estado.write("1/4 Buscando en prensa externa sobre Acclaim Energy...")
+            reglas = st.session_state.reglas_aprendidas
+            
+            estado.write("1/3 Buscando menciones de Acclaim Energy en prensa externa...")
+            q_empresa = optimizar_busqueda_con_aprendizaje(f"{EMPRESA} Mexico Latinoamerica {pregunta}", reglas)
             res_empresa = tavily.search(
-                query=f"{EMPRESA} Mexico Latinoamerica {pregunta}",
+                query=q_empresa,
                 search_depth="advanced",
                 max_results=6,
                 exclude_domains=DOMINIOS_EXCLUIDOS
             )
             
-            estado.write("2/4 Buscando menciones y entrevistas de María José Treviño...")
+            estado.write("2/3 Buscando entrevistas y participación de María José Treviño...")
+            q_vocera = optimizar_busqueda_con_aprendizaje(f"{VOCERA} Acclaim Energy {pregunta}", reglas)
             res_vocera = tavily.search(
-                query=f"{VOCERA} Acclaim Energy {pregunta}",
+                query=q_vocera,
                 search_depth="advanced",
                 max_results=5,
                 exclude_domains=DOMINIOS_EXCLUIDOS
             )
             
-            # Filtro estricto: descarta resultados irrelevantes o duplicados
             urls_vistas = set()
             fuentes_limpias = []
             for r in res_empresa['results'] + res_vocera['results']:
-                if r['url'] not in urls_vistas and r.get('score', 0) >= 0.45:
+                if r['url'] not in urls_vistas and r.get('score', 0) >= 0.25:
                     urls_vistas.add(r['url'])
-                    fuentes_limpias.append(f"TÍTULO: {r['title']}\nURL: {r['url']}\nCONTENIDO: {r['content'][:1000]}")
+                    fuentes_limpias.append(f"TÍTULO: {r['title']}\nURL: {r['url']}\nCONTENIDO: {r['content'][:1200]}")
             
             if not fuentes_limpias:
-                estado.update(label="Sin hallazgos relevantes en prensa", state="complete", expanded=False)
-                st.info(f"No se encontraron artículos externos relevantes y verificables sobre '{pregunta}'. Intenta con términos más amplios.")
+                estado.update(label="Sin resultados encontrados", state="complete", expanded=False)
+                st.info("No se encontraron artículos externos para esta búsqueda. Prueba con palabras más generales.")
             else:
                 contexto_web = "\n\n---\n\n".join(fuentes_limpias)
-                reglas_extra = "\n".join([f"- {r}" for r in st.session_state.reglas_aprendidas])
+                bloque_aprendizaje = ""
+                if reglas:
+                    lista_reglas = "\n".join([f"- OBLIGATORIO: {r}" for r in reglas])
+                    bloque_aprendizaje = f"\nINSTRUCCIONES APRENDIDAS DE FEEDBACK ANTERIOR (APLICAR CON MÁXIMA PRIORIDAD):\n{lista_reglas}\n"
                 
-                estado.write("3/4 Redactando borrador inicial con citas incrustadas...")
-                prompt_borrador = f"""
-                Eres un analista de inteligencia corporativa. Redacta un reporte basado ÚNICAMENTE en las fuentes externas de abajo.
-                
-                REGLAS INQUEBRANTABLES:
-                1. PROHIBIDO RELLENAR: Si solo hay 1 o 2 datos reales, reporta únicamente esos. Nunca agregues introducciones genéricas, conclusiones vacías ni contexto inventado.
-                2. ENLACES INCRUSTADOS: Inserta el enlace Markdown [Nombre del Medio o Artículo](URL) directamente dentro de la oración donde afirmas cada dato. No hagas lista de fuentes al final.
-                3. PRECISIÓN TOTAL: Si una fecha o cifra no está escrita en las fuentes, no la menciones.
-                {f"4. CORRECCIONES APRENDIDAS DEL USUARIO:{chr(10)}{reglas_extra}" if reglas_extra else ""}
+                estado.write("3/3 Redactando reporte detallado...")
+                prompt_final = f"""
+                Eres un analista senior de inteligencia corporativa y relaciones públicas especializado en {EMPRESA} y {VOCERA}.
+                Redacta un reporte COMPLETO, DETALLADO y bien estructurado basado en las fuentes externas proporcionadas abajo.
+                {bloque_aprendizaje}
+                REGLAS DE REDACCIÓN:
+                1. ENLACES INCRUSTADOS EN EL TEXTO: NO pongas una lista de fuentes al final. Incrusta cada enlace Markdown [Nombre del Medio o Artículo](URL) directamente dentro del párrafo o viñeta donde mencionas cada noticia o declaración.
+                2. DESARROLLO AMPLIO: Explica con claridad el contexto de cada nota, qué tema energético o corporativo aborda y cuál fue la participación de {EMPRESA} o {VOCERA}.
+                3. RIGOR: No inventes fechas ni cifras que no aparezcan en las fuentes.
 
-                FUENTES EXTERNAS:
+                FUENTES EXTERNAS RECOPILADAS:
                 {contexto_web}
 
-                CONSULTA: {pregunta}
+                CONSULTA DEL USUARIO: {pregunta}
                 """
-                borrador = llamar_gemini(prompt_borrador)
                 
-                estado.write("4/4 Auditando el borrador para eliminar relleno o datos no verificados...")
-                prompt_auditor = f"""
-                Actúa como un auditor editorial estricto. Compara el BORRADOR contra las FUENTES EXTERNAS originales.
-                
-                Tu única tarea es limpiar el borrador:
-                - ELIMINA cualquier frase de relleno, opinión general o dato que no esté respaldado textualmente por las fuentes.
-                - VERIFICA que cada afirmación tenga su enlace Markdown incrustado correctamente dentro del texto.
-                - Si todo es preciso y directo, devuelve el texto limpio listo para el usuario (sin agregar comentarios tuyos como "Aquí está el texto revisado").
-
-                FUENTES EXTERNAS:
-                {contexto_web}
-
-                BORRADOR A AUDITAR:
-                {borrador}
-                """
-                reporte_final = llamar_gemini(prompt_auditor)
-                
-                estado.update(label="¡Reporte auditado y verificado!", state="complete", expanded=False)
-                st.session_state.ultimo_reporte = reporte_final
-                st.markdown(reporte_final)
+                reporte = llamar_gemini(prompt_final)
+                estado.update(label="¡Investigación completada!", state="complete", expanded=False)
+                st.session_state.ultimo_reporte = reporte
+                st.markdown(reporte)
                 
         except Exception as e:
             estado.update(label="Se detuvo la búsqueda", state="error")
             st.error(f"Ocurrió un error: {e}")
 
-# Módulo de aprendizaje continuo en vivo
-if "ultimo_reporte" in st.session_state:
-    st.divider()
-    with st.expander("🧠 ¿Notaste algún error o relleno? Enséñale al agente para futuras búsquedas"):
-        correccion = st.text_input("Escribe qué debe corregir o evitar (ej. 'No incluyas directorios empresariales como ZoomInfo' o 'Sé más directo en las citas'):")
-        if st.button("Guardar aprendizaje"):
-            if correccion.strip():
-                st.session_state.reglas_aprendidas.append(correccion.strip())
-                st.success("¡Aprendido! El agente aplicará esta regla en las próximas consultas.")
+# Módulo de memoria y aprendizaje activo
+st.divider()
+with st.expander("Memoria y aprendizaje del agente (Reglas activas)", expanded=bool(st.session_state.reglas_aprendidas)):
+    if st.session_state.reglas_aprendidas:
+        st.write("**El agente está aplicando estas correcciones en sus búsquedas:**")
+        for i, regla in enumerate(st.session_state.reglas_aprendidas, 1):
+            st.write(f"{i}. {regla}")
+        if st.button("Borrar reglas aprendidas"):
+            st.session_state.reglas_aprendidas = []
+            st.rerun()
+    else:
+        st.caption("Aún no has agregado correcciones. Escribe abajo cualquier ajuste que quieras que el agente aplique en las siguientes consultas.")
+        
+    nueva_regla = st.text_input("Enséñale algo nuevo para las próximas búsquedas:", placeholder="Ej. No incluyas resultados de LinkedIn ni directorios, enfócate en noticias de energía en México")
+    if st.button("Guardar aprendizaje"):
+        if nueva_regla.strip():
+            st.session_state.reglas_aprendidas.append(nueva_regla.strip())
+            st.success("¡Regla guardada! Se aplicará automáticamente en la siguiente búsqueda.")
+            st.rerun()
