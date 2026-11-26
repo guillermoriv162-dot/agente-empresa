@@ -1,0 +1,32 @@
+name: Reporte Semanal Mercado Electrico
+
+on:
+  schedule:
+    # Todos los lunes a las 13:00 UTC (7:00 AM hora de Monterrey)
+    - cron: '0 13 * * 1'
+  # Permite ejecutarlo manualmente con un botón cuando quieras probarlo
+  workflow_dispatch:
+
+jobs:
+  ejecutar-reporte:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Instalar librerias
+        run: pip install google-genai tavily-python
+
+      - name: Generar y enviar reporte
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          CORREO_DESTINO: ${{ secrets.CORREO_DESTINO }}
+        run: python reporte_semanal.py
