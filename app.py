@@ -39,7 +39,7 @@ if st.button("Investigar", type="primary"):
             """
             
             respuesta = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-flash-latest",
                 contents=prompt
             )
             st.markdown(respuesta.text)
