@@ -46,13 +46,29 @@ if st.button("Investigar", type="primary"):
             Consulta: {pregunta}
             """
             
-            respuesta = client.models.generate_content(
-                model="gemini-3.8-flash",
-                contents=prompt
-            )
-            estado.update(label="¡Investigación completada!", state="complete", expanded=False)
-            st.markdown(respuesta.text)
+            # Prueba modelos en orden: si uno está saturado (503), pasa al siguiente automáticamente
+            modelos_respaldo = ["gemini-3.8-flash-lite", "gemini-3.8-flash", "gemini-2.5-flash-lite"]
+            respuesta_texto = None
+            ultimo_error = None
             
+            for modelo in modelos_respaldo:
+                try:
+                    respuesta = client.models.generate_content(
+                        model=modelo,
+                        contents=prompt
+                    )
+                    respuesta_texto = respuesta.text
+                    break
+                except Exception as err:
+                    ultimo_error = err
+                    continue
+            
+            if respuesta_texto:
+                estado.update(label="¡Investigación completada!", state="complete", expanded=False)
+                st.markdown(respuesta_texto)
+            else:
+                raise ultimo_error
+                
         except Exception as e:
             estado.update(label="Se detuvo la búsqueda", state="error")
-            st.error(f"Ocurrió un retraso o error: {e}")
+            st.error(f"Todos los modelos de Google están saturados en este momento: {e}")
