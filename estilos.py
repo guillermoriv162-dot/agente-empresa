@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 
 def aplicar_identidad_acclaim():
@@ -67,15 +68,9 @@ def aplicar_identidad_acclaim():
     """, unsafe_allow_html=True)
 
 def mostrar_logo_sidebar():
-    st.markdown("""
-    <div style="text-align: center; padding: 0.5rem 0 1rem 0;">
-        <svg width="64" height="64" viewBox="0 0 100 100" xmlns="http://w3.org">
-            <path d="M50 10 C72 10 88 26 90 48 C80 30 64 22 45 24 C47 18 48 14 50 10 Z" fill="#75787B"/>
-            <path d="M90 55 C85 77 67 90 45 90 C63 82 74 68 75 49 C80 51 85 53 90 55 Z" fill="#75787B"/>
-            <path d="M40 88 C20 80 10 60 15 38 C20 57 32 70 50 74 C46 79 43 84 40 88 Z" fill="#75787B"/>
-            <path d="M50 32 C62 42 66 56 60 66 C48 68 38 64 34 54 C38 42 44 35 50 32 Z" fill="#BF0D3E"/>
-        </svg>
-        <div style="font-size: 1.35rem; font-weight: 700; color: #BF0D3E; margin-top: 0.2rem;">acclaim</div>
-        <div style="font-size: 0.65rem; font-weight: 600; color: #75787B; letter-spacing: 2px;">ENERGY ADVISORS</div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('<div style="padding: 0.5rem 0.5rem 0.8rem 0.5rem; background-color: #FFFFFF; border-radius: 10px;">', unsafe_allow_html=True)
+    if os.path.exists("logo.png"):
+        st.image("logo.png", use_container_width=True)
+    elif os.path.exists("logo.jpg"):
+        st.image("logo.jpg", use_container_width=True)
+    st.markdown('</div>', unsafe_allow_html=True)
