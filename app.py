@@ -47,7 +47,7 @@ if st.button("Investigar", type="primary"):
             """
             
             # Prueba modelos en orden: si uno está saturado (503), pasa al siguiente automáticamente
-            modelos_respaldo = ["gemini-3.8-flash-lite", "gemini-3.8-flash", "gemini-2.5-flash-lite"]
+           modelos_respaldo = ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.5-flash"]
             respuesta_texto = None
             ultimo_error = None
             
