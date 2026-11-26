@@ -46,8 +46,7 @@ if st.button("Investigar", type="primary"):
             Consulta: {pregunta}
             """
             
-            # Prueba modelos en orden: si uno está saturado (503), pasa al siguiente automáticamente
-           modelos_respaldo = ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.5-flash"]
+            modelos_respaldo = ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.5-flash"]
             respuesta_texto = None
             ultimo_error = None
             
@@ -71,4 +70,4 @@ if st.button("Investigar", type="primary"):
                 
         except Exception as e:
             estado.update(label="Se detuvo la búsqueda", state="error")
-            st.error(f"Todos los modelos de Google están saturados en este momento: {e}")
+            st.error(f"Ocurrió un error al consultar los modelos: {e}")
