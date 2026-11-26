@@ -5,7 +5,7 @@ from tavily import TavilyClient
 
 @st.cache_resource
 def iniciar_clientes():
-    g_client = genai.Client(api_key=os.environ["GEMINI_API_KEY"], http_options={'timeout': 20000})
+    g_client = genai.Client(api_key=os.environ["GEMINI_API_KEY"], http_options={'timeout': 25000})
     t_client = TavilyClient(api_key=os.environ["TAVILY_API_KEY"])
     return g_client, t_client
 
@@ -14,7 +14,6 @@ client, tavily = iniciar_clientes()
 EMPRESA = "Acclaim Energy"
 VOCERA = "María José Treviño"
 
-# Dominios oficiales a excluir para enfocarse solo en medios y fuentes externas
 DOMINIOS_EXCLUIDOS = [
     "acclaimenergy.com",
     "acclaimenergy.com.mx",
@@ -22,50 +21,65 @@ DOMINIOS_EXCLUIDOS = [
     "://acclaimenergy.com.mx"
 ]
 
-st.set_page_config(page_title=f"Agente: {EMPRESA}", page_icon="⚡")
-st.title(f"⚡ Agente de Prensa y Terceros: {EMPRESA}")
-st.write(f"Monitoreo en medios externos sobre **{EMPRESA}** y **{VOCERA}**.")
+st.set_page_config(page_title=f"Agente: {EMPRESA}", page_icon="🔎", layout="wide")
+st.title(f"🔎 Inteligencia de Medios Externos: {EMPRESA}")
+st.write(f"Monitoreo detallado en prensa, entrevistas y terceros sobre **{EMPRESA}** y **{VOCERA}**.")
 
-pregunta = st.text_input("¿Qué quieres investigar hoy?", placeholder="Ej. Entrevistas, menciones en prensa o eventos en 2026")
+pregunta = st.text_input("¿Qué quieres investigar hoy?", placeholder="Ej. Entrevistas de María José Treviño o presencia en prensa en 2026")
 
 if st.button("Investigar", type="primary"):
     if not pregunta.strip():
         st.warning("Por favor escribe una consulta primero.")
     else:
-        estado = st.status("Iniciando investigación en fuentes externas...", expanded=True)
+        estado = st.status("Iniciando rastreo profundo en medios externos...", expanded=True)
         try:
-            estado.write("1/2 Buscando en prensa y sitios de terceros...")
-            if any(p in pregunta.lower() for p in ["maria", "maría", "treviño"]):
-                consulta = f'"{VOCERA}" "{EMPRESA}" {pregunta}'
-            else:
-                consulta = f'"{EMPRESA}" {pregunta}'
-                
-            # exclude_domains bloquea los sitios oficiales de la empresa
-            resultados = tavily.search(
-                query=consulta,
-                search_depth="basic",
+            estado.write("1/3 Buscando menciones de la empresa en prensa externa...")
+            res_empresa = tavily.search(
+                query=f"{EMPRESA} Mexico Latinoamerica {pregunta}",
+                search_depth="advanced",
                 max_results=6,
                 exclude_domains=DOMINIOS_EXCLUIDOS
             )
             
-            contexto_web = "\n".join([f"- {r['title']} ({r['url']}): {r['content'][:450]}" for r in resultados['results']])
+            estado.write("2/3 Buscando entrevistas y participación de María José Treviño...")
+            res_vocera = tavily.search(
+                query=f"{VOCERA} Acclaim Energy {pregunta}",
+                search_depth="advanced",
+                max_results=5,
+                exclude_domains=DOMINIOS_EXCLUIDOS
+            )
             
-            estado.write("2/2 Redactando resumen ejecutivo...")
+            # Unimos y eliminamos enlaces duplicados
+            urls_vistas = set()
+            fuentes_limpias = []
+            for r in res_empresa['results'] + res_vocera['results']:
+                if r['url'] not in urls_vistas:
+                    urls_vistas.add(r['url'])
+                    fuentes_limpias.append(f"TÍTULO: {r['title']}\nURL: {r['url']}\nCONTENIDO: {r['content'][:1000]}")
+            
+            contexto_web = "\n\n---\n\n".join(fuentes_limpias)
+            
+            estado.write("3/3 Analizando fuentes y redactando reporte detallado...")
             prompt = f"""
-            Eres un analista de inteligencia corporativa y monitoreo de medios especializado en {EMPRESA} y en {VOCERA}.
-            Analiza exclusivamente lo que dicen fuentes externas, medios de comunicación y terceros sobre la empresa o su directiva.
-            Reglas:
-            - Resume de forma ejecutiva y clara usando solo la información proporcionada abajo.
-            - No incluyas información proveniente de sitios oficiales de {EMPRESA}.
-            - Cita siempre el medio o fuente externa con enlaces Markdown clickeables.
-            
-            Información de terceros encontrada:
+            Eres un analista senior de inteligencia corporativa y relaciones públicas especializado en {EMPRESA} y {VOCERA}.
+            Tu tarea es redactar un reporte EXHAUSTIVO, DETALLADO y 100% VERÍDICO basado ÚNICAMENTE en las fuentes externas proporcionadas abajo.
+
+            REGLAS ESTRICTAS DE PRECISIÓN:
+            1. CERO INVENCIONES: Si una fecha, cifra o declaración no aparece explícitamente en los textos de abajo, NO la incluyas ni la supongas.
+            2. DETALLE AMPLIO: No hagas resúmenes de dos líneas. Desarrolla cada hallazgo explicando el contexto, qué medio lo publicó, qué tema energético o corporativo se trató y cuál fue el aporte de {EMPRESA} o {VOCERA}.
+            3. ESTRUCTURA DEL REPORTE:
+               - **Panorama General:** Resumen de los hallazgos encontrados en medios externos.
+               - **Menciones y Noticias sobre {EMPRESA}:** Desglose detallado por cada fuente externa relevante.
+               - **Actividad Pública y Declaraciones de {VOCERA}:** Entrevistas, columnas, paneles o citas encontradas.
+               - **Fuentes Consultadas:** Lista con enlaces Markdown clickeables ([Nombre del artículo o medio](URL)).
+
+            FUENTES EXTERNAS RECOPILADAS:
             {contexto_web}
-            
-            Consulta: {pregunta}
+
+            CONSULTA DEL USUARIO: {pregunta}
             """
             
-            modelos_respaldo = ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.5-flash"]
+            modelos_respaldo = ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite"]
             respuesta_texto = None
             ultimo_error = None
             
@@ -82,7 +96,7 @@ if st.button("Investigar", type="primary"):
                     continue
             
             if respuesta_texto:
-                estado.update(label="¡Investigación en medios completada!", state="complete", expanded=False)
+                estado.update(label="¡Reporte detallado completado!", state="complete", expanded=False)
                 st.markdown(respuesta_texto)
             else:
                 raise ultimo_error
