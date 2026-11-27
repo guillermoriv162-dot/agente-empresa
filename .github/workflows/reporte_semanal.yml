@@ -20,7 +20,7 @@ jobs:
           python-version: '3.12'
 
       - name: Instalar librerias
-        run: pip install google-genai tavily-python
+        run: pip install google-genai tavily-python python-docx
 
       - name: Generar y enviar reporte
         env:
