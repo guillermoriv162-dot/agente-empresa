@@ -70,7 +70,7 @@ def enviar_correo(contenido, fecha):
 
     msg.attach(MIMEText(contenido, "plain", "utf-8"))
 
-    with smtplib.SMTP_SSL("://gmail.com", 465) as server:
+    with smtplib.SMTP_SSL("smtp." + "gmail.com", 465) as server:
         server.login(remitente, password)
         server.send_message(msg)
 
