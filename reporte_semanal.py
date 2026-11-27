@@ -66,7 +66,7 @@ def enviar_correo(contenido, fecha):
     msg = MIMEMultipart()
     msg["From"] = remitente
     msg["To"] = destinatario
-    msg["Subject"] = f"[REPORTE-MERCADO-ELECTRICO] Semana {fecha}"
+    msg["Subject"] = f"REPORTE-MERCADO-ELECTRICO Semana {fecha}"
 
     msg.attach(MIMEText(contenido, "plain", "utf-8"))
 
